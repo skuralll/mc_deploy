@@ -3,6 +3,7 @@ package com.skuralll.mc_deploy
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import java.util.*
 
 class MCDeployPlugin : Plugin<Project> {
 
@@ -17,10 +18,13 @@ class MCDeployPlugin : Plugin<Project> {
             project.tasks.register("exTask") { task ->
                 task.doLast {
                     // 設定ファイル読み込み
-                    val localPropertiesFile = project.file(FILE_NAME)
-                    if (!localPropertiesFile.exists()) {
+                    val propertiesFile = project.file(FILE_NAME)
+                    val properties = Properties()
+                    if(!propertiesFile.exists()){
                         throw GradleException("Task failed: $FILE_NAME file not found")
                     }
+                    properties.load(propertiesFile.inputStream())
+                    // TODO : SSH接続
                 }
             }
         }
