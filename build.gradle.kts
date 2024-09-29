@@ -26,9 +26,9 @@ kotlin {
 
 gradlePlugin {
     plugins {
-        create("mcplugin_deploy") {
-            id = "com.skuralll.mcplugin_deploy"
-            implementationClass = "com.skuralll.MCDeployPlugin"
+        create("mc_deploy") {
+            id = "com.skuralll.mc_deploy"
+            implementationClass = "com.skuralll.mc_deploy.MCDeployPlugin"
         }
     }
 }
