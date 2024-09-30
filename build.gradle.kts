@@ -14,6 +14,7 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.hierynomus:sshj:0.38.0")
+    implementation("nl.vv32.rcon:rcon:1.2.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
 
@@ -24,6 +25,7 @@ tasks.test {
 kotlin {
     jvmToolchain(21)
 }
+
 
 gradlePlugin {
     plugins {
