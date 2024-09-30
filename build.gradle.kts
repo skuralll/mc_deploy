@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation("com.hierynomus:sshj:0.38.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
 
