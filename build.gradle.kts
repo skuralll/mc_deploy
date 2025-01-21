@@ -1,11 +1,11 @@
 plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "2.1.0"
     `java-gradle-plugin`
     `maven-publish`
 }
 
 group = "com.skuralll"
-version = "1.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
