@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.skuralll"
-version = "1.0.9"
+version = "1.0.10"
 
 repositories {
     mavenCentral()
@@ -44,4 +44,9 @@ publishing {
             url = uri("https://jitpack.io") // JitPack を指定
         }
     }
+}
+
+// 重複するリソースファイルの除外設定
+tasks.named<Copy>("processResources") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
