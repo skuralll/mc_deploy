@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.skuralll"
-version = "1.0.7"
+version = "1.0.8"
 
 repositories {
     mavenCentral()
@@ -40,17 +40,8 @@ gradlePlugin {
 publishing {
     repositories {
         maven {
-            name = "gpr"
-            url = uri("https://maven.pkg.github.com/skuralll/mc_deploy")
-            credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
-                password = project.findProperty("gpr.token") as String? ?: System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-    publications {
-        create<MavenPublication>("gpr") {
-            from(components["java"])
+            name = "jitpack"
+            url = uri("https://jitpack.io") // JitPack を指定
         }
     }
 }
