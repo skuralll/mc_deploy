@@ -3,7 +3,8 @@ import org.gradle.kotlin.dsl.from
 plugins {
     kotlin("jvm") version "2.1.0"
     `java-gradle-plugin`
-    `maven-publish`
+    id("com.gradle.plugin-publish") version "1.2.1"
+    signing
 }
 
 group = "com.skuralll"
@@ -29,24 +30,23 @@ kotlin {
 }
 
 gradlePlugin {
+    website.set("https://github.com/skuralll/mc_deploy")
+    vcsUrl.set("https://github.com/skuralll/mc_deploy.git")
     plugins {
         create("mc_deploy") {
             id = "com.skuralll.mc_deploy"
+            displayName = "mc_deploy"
+            description = "deploy your minecraft plugin to server"
+            tags.set(listOf("minecraft"))
             implementationClass = "com.skuralll.mc_deploy.MCDeployPlugin"
         }
     }
 }
 
-publishing {
-    repositories {
-        maven {
-            name = "jitpack"
-            url = uri("https://jitpack.io") // JitPack を指定
-        }
-    }
-}
-
-// 重複するリソースファイルの除外設定
-tasks.named<Copy>("processResources") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+signing {
+    useInMemoryPgpKeys(
+        project.findProperty("signing.key") as String?,
+        project.findProperty("signing.password") as String?
+    )
+    sign(publishing.publications)
 }
