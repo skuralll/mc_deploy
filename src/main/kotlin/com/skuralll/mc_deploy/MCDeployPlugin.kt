@@ -9,78 +9,38 @@ import nl.vv32.rcon.Rcon
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.internal.impldep.org.bouncycastle.cms.RecipientId.password
 import java.io.File
 import java.util.*
+import java.util.Properties
 
 
 class MCDeployPlugin : Plugin<Project> {
 
     companion object {
-        // 設定ファイル名
         const val FILE_NAME = "mc_deploy.properties"
+        const val KEY_USER = "user"
+        const val KEY_HOST = "host"
+        const val KEY_SSH_PORT = "ssh_port"
+        const val KEY_SSH_KEY = "ssh_key"
+        const val KEY_LOCAL_PATH = "local_path"
+        const val KEY_REMOTE_PATH = "remote_path"
+        const val KEY_RCON_PORT = "rcon_port"
+        const val KEY_RCON_PASSWORD = "rcon_password"
+        const val KEY_PLUGIN_NAME = "plugin_name"
     }
 
     override fun apply(target: Project) {
-        target.allprojects{
-            project ->
+        target.allprojects { project ->
             project.tasks.register("mcDeploy") { task ->
                 task.doLast {
-                    /* 設定ファイル読み込み */
-                    val propertiesFile = project.file(FILE_NAME)
-                    val properties = Properties()
-                    if(!propertiesFile.exists()) throw GradleException("Task failed: $FILE_NAME file not found")
-                    properties.load(propertiesFile.inputStream())
-                    /* ファイル転送 */
-                    // SSH
-                    checkProperty(properties, "user")
-                    checkProperty(properties, "host")
-                    checkProperty(properties, "ssh_port")
+                    val properties = loadProperties(project)
                     try {
-                        SSHClient().use { ssh ->
-                            ssh.addHostKeyVerifier(PromiscuousVerifier())
-                            ssh.connect(properties.getProperty("host"), properties.getProperty("ssh_port").toInt())
-                            // 認証
-                            println("Connecting SSH...")
-                            var keyProvider : KeyProvider? = null
-                            if (properties.containsKey("ssh_key")){
-                                var keyPath = properties.getProperty("ssh_key")
-                                if (keyPath.startsWith("~")) keyPath = keyPath.replaceFirst("~", System.getProperty("user.home"))
-                                if (!File(keyPath).exists()) throw GradleException("Task failed: $keyPath is not exist.")
-                                keyProvider = ssh.loadKeys(keyPath)
-                            }
-                            if (keyProvider == null){
-                                ssh.authPublickey(properties.getProperty("user"))
-                            }
-                            else{
-                                ssh.authPublickey(properties.getProperty("user"), keyProvider)
-                            }
-                            println("SSH Connected.")
-                            // SFTP
-                            println("Uploading plugin...")
-                            checkProperty(properties, "local_path")
-                            checkProperty(properties, "remote_path")
-                            val localPath = properties.getProperty("local_path")
-                            if (!File(localPath).exists()) throw GradleException("Task failed: $localPath is not exist.")
-                            val sftp: SFTPClient = ssh.newSFTPClient()
-                            sftp.put(localPath, properties.getProperty("remote_path"))
-                            println("Uploaded plugin.")
-                            sftp.close()
-                        }
-                        /* リロードコマンド送信 */
-                        println("Connecting RCON...")
-                        checkProperty(properties, "rcon_port")
-                        checkProperty(properties, "rcon_password")
-                        val rcon = Rcon.open(properties.getProperty("host"), properties.getProperty("rcon_port").toInt())
-                        rcon.authenticate(properties.getProperty("rcon_password"))
-                        checkProperty(properties, "plugin_name")
-                        println(rcon.sendCommand("plugman reload ${properties.getProperty("plugin_name")}"))
-                        rcon.close()
-                        println("Disconnected RCON.")
-                    } catch (e : UserAuthException){
-                        println("Task failed: Authentication failed.")
-                        e.printStackTrace()
-                    } catch (e: Exception){
+                        sshFileTransfer(properties)
+                        reloadPluginViaRcon(properties)
+                    } catch (e: GradleException) {
+                        println("Task failed: ${e.message}")
+                    } catch (e: Exception) {
+                        println("An unexpected error occurred:")
                         e.printStackTrace()
                     }
                     println("Finished Task.")
@@ -89,8 +49,75 @@ class MCDeployPlugin : Plugin<Project> {
         }
     }
 
-    private fun checkProperty(properties: Properties, key : String){
-        if(!properties.containsKey(key)) throw GradleException("Task failed: The key '${key}' is not set.")
+    private fun loadProperties(project: Project): Properties {
+        val propertiesFile = project.file(FILE_NAME)
+        if (!propertiesFile.exists()) {
+            throw GradleException("$FILE_NAME file not found")
+        }
+        return Properties().apply {
+            load(propertiesFile.inputStream())
+        }
     }
 
+    private fun sshFileTransfer(properties: Properties) {
+        validateProperties(properties, KEY_USER, KEY_HOST, KEY_SSH_PORT, KEY_LOCAL_PATH, KEY_REMOTE_PATH)
+        SSHClient().use { ssh ->
+            ssh.addHostKeyVerifier(PromiscuousVerifier())
+            ssh.connect(properties.getProperty(KEY_HOST), properties.getProperty(KEY_SSH_PORT).toInt())
+
+            authenticate(ssh, properties)
+            println("SSH Connected.")
+
+            ssh.newSFTPClient().use { sftp ->
+                uploadFile(sftp, properties)
+            }
+        }
+    }
+
+    private fun authenticate(ssh: SSHClient, properties: Properties) {
+        val keyProvider: KeyProvider? = properties.getProperty(KEY_SSH_KEY)?.let { keyPath ->
+            val resolvedPath = if (keyPath.startsWith("~")) keyPath.replaceFirst("~", System.getProperty("user.home")) else keyPath
+            if (!File(resolvedPath).exists()) throw GradleException("SSH key file not found at $resolvedPath")
+            ssh.loadKeys(resolvedPath)
+        }
+
+        try {
+            if (keyProvider != null) {
+                ssh.authPublickey(properties.getProperty(KEY_USER), keyProvider)
+            } else {
+                ssh.authPublickey(properties.getProperty(KEY_USER))
+            }
+        } catch (e: UserAuthException) {
+            throw GradleException("SSH authentication failed")
+        }
+    }
+
+    private fun uploadFile(sftp: SFTPClient, properties: Properties) {
+        val localPath = properties.getProperty(KEY_LOCAL_PATH)
+        val remotePath = properties.getProperty(KEY_REMOTE_PATH)
+        if (!File(localPath).exists()) {
+            throw GradleException("Local file not found: $localPath")
+        }
+        println("Uploading plugin...")
+        sftp.put(localPath, remotePath)
+        println("Plugin uploaded to $remotePath.")
+    }
+
+    private fun reloadPluginViaRcon(properties: Properties) {
+        validateProperties(properties, KEY_HOST, KEY_RCON_PORT, KEY_RCON_PASSWORD, KEY_PLUGIN_NAME)
+        Rcon.open(properties.getProperty(KEY_HOST), properties.getProperty(KEY_RCON_PORT).toInt()).use { rcon ->
+            rcon.authenticate(properties.getProperty(KEY_RCON_PASSWORD))
+            val response = rcon.sendCommand("plugman reload ${properties.getProperty(KEY_PLUGIN_NAME)}")
+            println("RCON Response: $response")
+        }
+        println("RCON disconnected.")
+    }
+
+    private fun validateProperties(properties: Properties, vararg keys: String) {
+        keys.forEach { key ->
+            if (!properties.containsKey(key)) {
+                throw GradleException("Missing required property: $key")
+            }
+        }
+    }
 }
