@@ -1,4 +1,4 @@
-package com.skuralll.mc_deploy
+package io.github.skuralll.mc_deploy
 
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.SFTPClient

@@ -7,7 +7,7 @@ plugins {
     signing
 }
 
-group = "com.skuralll"
+group = "io.github.skuralll"
 version = "1.0.10"
 
 repositories {
@@ -34,11 +34,11 @@ gradlePlugin {
     vcsUrl.set("https://github.com/skuralll/mc_deploy.git")
     plugins {
         create("mc_deploy") {
-            id = "com.skuralll.mc_deploy"
+            id = "io.github.skuralll.mc_deploy"
             displayName = "mc_deploy"
             description = "deploy your minecraft plugin to server"
             tags.set(listOf("minecraft"))
-            implementationClass = "com.skuralll.mc_deploy.MCDeployPlugin"
+            implementationClass = "io.github.skuralll.mc_deploy.MCDeployPlugin"
         }
     }
 }
