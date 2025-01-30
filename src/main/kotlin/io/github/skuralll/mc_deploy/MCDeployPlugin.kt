@@ -11,7 +11,6 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import java.io.File
 import java.util.*
-import java.util.Properties
 
 
 class MCDeployPlugin : Plugin<Project> {
