@@ -105,10 +105,17 @@ class MCDeployPlugin : Plugin<Project> {
 
     private fun reloadPluginViaRcon(properties: Properties) {
         validateProperties(properties, KEY_HOST, KEY_RCON_PORT, KEY_RCON_PASSWORD, KEY_PLUGIN_NAME)
+        executeRconCommands(properties, listOf("plugman reload ${properties.getProperty(KEY_PLUGIN_NAME)}"))
+    }
+
+    private fun executeRconCommands(properties: Properties, commands: List<String>) {
+        validateProperties(properties, KEY_HOST, KEY_RCON_PORT, KEY_RCON_PASSWORD)
         Rcon.open(properties.getProperty(KEY_HOST), properties.getProperty(KEY_RCON_PORT).toInt()).use { rcon ->
             rcon.authenticate(properties.getProperty(KEY_RCON_PASSWORD))
-            val response = rcon.sendCommand("plugman reload ${properties.getProperty(KEY_PLUGIN_NAME)}")
-            println("RCON Response: $response")
+            commands.forEach { command ->
+                val response = rcon.sendCommand(command)
+                println("RCON Response for '$command': $response")
+            }
         }
         println("RCON disconnected.")
     }
